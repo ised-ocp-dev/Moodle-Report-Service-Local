@@ -4,7 +4,6 @@ namespace local_reportservice\external;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once('../../../../config.php');
 require_once("{$CFG->libdir}/completionlib.php");
 
 use external_api;

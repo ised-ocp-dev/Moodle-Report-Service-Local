@@ -25,5 +25,5 @@
 defined('MOODLE_INTERNAL') || die;
 
 $plugin->component = 'local_reportservice';
-$plugin->version  = 202306301;
+$plugin->version  = 20230801;
 $plugin->requires = 2019111200;

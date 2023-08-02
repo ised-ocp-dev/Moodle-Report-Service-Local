@@ -53,14 +53,14 @@ class get_coursecompletion extends external_api {
         // Get criteria and put in correct order
         $criteria = array();
 
+        // Course completions of "Condition: Course grade"
         foreach ($completion->get_criteria(COMPLETION_CRITERIA_TYPE_COURSE) as $criterion) {
             $criteria[] = $criterion;
         }
-
+        // Course completions of "Condition: Activity completion"
         foreach ($completion->get_criteria(COMPLETION_CRITERIA_TYPE_ACTIVITY) as $criterion) {
             $criteria[] = $criterion;
         }
-
         foreach ($completion->get_criteria() as $criterion) {
             if (!in_array($criterion->criteriatype, array(
                     COMPLETION_CRITERIA_TYPE_COURSE, COMPLETION_CRITERIA_TYPE_ACTIVITY))) {
@@ -71,35 +71,50 @@ class get_coursecompletion extends external_api {
         // Get user data
         $progress = array();
         $progress = $completion->get_progress_all(
-                implode(' AND ', $where),
-                $where_params,
-                $group,
-                'u.firstname ASC',
+                '',
+                array(),
                 0,
-                0
+                'u.firstname ASC'
         );
 
-        $all_users_completion = array();
-        foreach ($progress as $user) {
-            $item = new StdClass;
-            $item->name =  fullname($user);
-            $userRecord = $DB->get_record('user', array('id' => $user->id));
-            $item->email = $userRecord->email;
+        $userid_to_coursecomplete = array();
+        $userids = array();
+        foreach($progress as $user_progress) {
+            $userids[] = $user_progress->id;
 
             $params = array(
-                'userid'    => $user->id,
+                'userid'    => $user_progress->id,
                 'course'    => $course->id
             );
             $ccompletion = new completion_completion($params);
 
             if ($ccompletion->is_complete()) {
-                $item->coursecomplete = userdate($ccompletion->timecompleted, get_string('strftimedatetimeshort', 'langconfig'));
+                $userid_to_coursecomplete[$user_progress->id] = userdate($ccompletion->timecompleted, '%Y-%m-%d, %H:%M');
             } else {
-                $item->coursecomplete = '';
+                $userid_to_coursecomplete[$user_progress->id] = '';
             }
-            $all_users_completion[] = $item;
         }
-        return $all_users_completion;
+        $useridssql = implode(", ", $userids);
+
+        // Query user table to get more details
+        $rs = $DB->get_recordset_sql("
+                SELECT
+                    u.id, u.firstname, u.lastname, u.email
+                FROM
+                    {user} u
+                WHERE
+                    u.id IN ($useridssql)");
+
+        $all_users_ccompletion = array();
+        foreach ($rs as $user) {
+            $item = new StdClass;
+            $item->name = $user->firstname . ' ' . $user->lastname;
+            $item->email = $user->email;
+            $item->coursecomplete = $userid_to_coursecomplete[$user->id];
+            $all_users_ccompletion[] = $item;
+        }
+        $rs->close();
+        return $all_users_ccompletion;
     }
 
 
